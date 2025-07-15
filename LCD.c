@@ -1,5 +1,5 @@
 //==============================================================================
-// Copyright (c) 2005-2010, Isaac Marino Bavaresco
+// Copyright (c) 2005-2025, Isaac Marino Bavaresco
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -25,21 +25,30 @@
 //==============================================================================
 // Set TAB width to 4 characters
 //==============================================================================
-
+#include <string.h>
 #include "LCDcfg.h"
+#include "LCD.h"
 //==============================================================================
 //==============================================================================
 //==============================================================================
 //==============================================================================
 //==============================================================================
-
-#if         defined USE_READ_PIN && defined DETECT_FAILURE
-
+#if         defined USE_READ_PIN && USE_READ_PIN != 0 && defined DETECT_FAILURE && DETECT_FAILURE != 0
+//==============================================================================
 // Flag to indicate that the display is defective.
 unsigned char               displayfailed   = 0;
-
-#endif  //  defined USE_READ_PIN && defined DETECT_FAILURE
-
+//==============================================================================
+signed char LCDHasFailed( void )
+	{
+	return displayfailed ? 1 : 0;
+	}
+//==============================================================================
+void LCDClearFailedFlag( void )
+	{
+	displayfailed	= 0;
+	}
+//==============================================================================
+#endif  //  defined USE_READ_PIN && USE_READ_PIN != 0 && defined DETECT_FAILURE && DETECT_FAILURE != 0
 //==============================================================================
 #define LCDWriteCmd(c)  LCDWrite((c),0)
 #define LCDWriteData(c) LCDWrite((c),1)
@@ -57,23 +66,23 @@ static void LCDWrite( unsigned char c, unsigned char di )
     // Variable to save the interrupts state at function entry.
     DeclareIntSaveVar( Aux );
 
-#if         defined USE_READ_PIN
+#if         defined USE_READ_PIN && USE_READ_PIN != 0
     unsigned char       s;
 
-#if         defined DETECT_FAILURE
+#if         defined DETECT_FAILURE && DETECT_FAILURE != 0
     unsigned short      n   = NUMBER_OF_READS_TIMEOUT;
 
     // The display has failed previously...
     if( displayfailed )
         // ... so we will not even try to access it
         return;
-#endif  //  defined DETECT_FAILURE
+#endif  //  defined DETECT_FAILURE && DETECT_FAILURE != 0
 
-#endif  //  defined USE_READ_PIN
+#endif  //  defined USE_READ_PIN && USE_READ_PIN != 0
 
     SaveInterruptsState( Aux );
 
-#if         defined USE_READ_PIN
+#if         defined USE_READ_PIN && USE_READ_PIN != 0
 
     // Repeat while bit BUSY == 1
     do
@@ -105,7 +114,7 @@ static void LCDWrite( unsigned char c, unsigned char di )
         // Wait for the minimum 'tLOW'.
         Delay500ns();
 
-#if         defined USE_FOUR_BIT_INTERFACE
+#if         defined USE_FOUR_BIT_INTERFACE && USE_FOUR_BIT_INTERFACE != 0
 
         // When using a 4-bit interface we need to do a dummy read
 
@@ -118,17 +127,17 @@ static void LCDWrite( unsigned char c, unsigned char di )
         // Wait for the minimum 'tLOW'.
         Delay500ns();
 
-#endif  //  defined USE_FOUR_BIT_INTERFACE
+#endif  //  defined USE_FOUR_BIT_INTERFACE && USE_FOUR_BIT_INTERFACE != 0
 
         // Set READ/!WRITE pin as write (0)
         SetRWAsWrite();
         }
-#if         !defined DETECT_FAILURE
+#if         !defined DETECT_FAILURE || DETECT_FAILURE == 0
 
     // Repeat until the BUSY bit is zero
     while( s & 0x80 );
 
-#else   //  !defined DETECT_FAILURE
+#else   //  !defined DETECT_FAILURE || DETECT_FAILURE == 0
 
     // Repeat until the BUSY bit is zero or until the maximum number of repetitions.
     while(( s & 0x80 ) && ( --n != 0u ));
@@ -138,13 +147,13 @@ static void LCDWrite( unsigned char c, unsigned char di )
         // ... so we flag the display as failed
         displayfailed   = 1;
 
-#endif  //  !defined DETECT_FAILURE
+#endif  //  !defined DETECT_FAILURE || DETECT_FAILURE == 0
 
-#else   //  defined USE_READ_PIN
+#else   //  defined USE_READ_PIN && USE_READ_PIN != 0
 
     DisableInterrupts();
 
-#endif  //  defined USE_READ_PIN
+#endif  //  defined USE_READ_PIN && USE_READ_PIN != 0
 
     //--------------------------------------------------------------------------
     // Now we may send the data.
@@ -166,7 +175,7 @@ static void LCDWrite( unsigned char c, unsigned char di )
     // Wait for the minimum 'tLOW'.
     Delay500ns();
 
-#if         defined USE_FOUR_BIT_INTERFACE
+#if         defined USE_FOUR_BIT_INTERFACE && USE_FOUR_BIT_INTERFACE != 0
     // The low nibble is output to the data port.
     SetDataPortValueLow( c );
     // Effectivate the data transfer.
@@ -177,16 +186,16 @@ static void LCDWrite( unsigned char c, unsigned char di )
     SetEAsDisabled();
     // Wait for the minimum 'tLOW'.
     Delay500ns();
-#endif  //  defined USE_FOUR_BIT_INTERFACE
+#endif  //  defined USE_FOUR_BIT_INTERFACE && USE_FOUR_BIT_INTERFACE != 0
 
 
     SetDataPortAsInputs();
     RestoreInterruptsState( Aux );
 
-#if         !defined USE_READ_PIN
+#if         !defined USE_READ_PIN || USE_READ_PIN == 0
 
     // If we are not reading the busy flag, then we must wait at least for
-    // the worst-case execution time before any other command ca be executed.
+    // the worst-case execution time before any other command can be executed.
 
     // This write is a "clear screen" or a "home cursor" command...
     if( di == 0 && c <= 3 )
@@ -197,11 +206,11 @@ static void LCDWrite( unsigned char c, unsigned char di )
         // ... the execution time is no more than 37us.
         Delay37us();
 
-#endif  //  !defined USE_READ_PIN
+#endif  //  !defined USE_READ_PIN || USE_READ_PIN == 0
 
     }
 //==============================================================================
-/*
+#if 0
 static unsigned char LCDReadStatus( void )
     {
     // Variable to save the interrupts state at function entry.
@@ -230,7 +239,7 @@ static unsigned char LCDReadStatus( void )
     // Wait for the minimum 'tLOW'.
     Delay500ns();
 
-#if         defined USE_FOUR_BIT_INTERFACE
+#if         defined USE_FOUR_BIT_INTERFACE && USE_FOUR_BIT_INTERFACE != 0
 
     // Effectivate the data transfer.
     SetEAsEnabled();
@@ -243,7 +252,7 @@ static unsigned char LCDReadStatus( void )
     // Wait for the minimum 'tLOW'.
     Delay500ns();
 
-#endif  //  defined USE_FOUR_BIT_INTERFACE
+#endif  //  defined USE_FOUR_BIT_INTERFACE && USE_FOUR_BIT_INTERFACE != 0
 
 
     // Set READ/!WRITE pin as write (0)
@@ -254,11 +263,11 @@ static unsigned char LCDReadStatus( void )
     // Return the read data.
     return s;
     }
-*/
+#endif
 //==============================================================================
 // Reads one data byte from the LCD.
 
-#if         defined USE_READ_PIN
+#if         defined USE_READ_PIN && USE_READ_PIN != 0
 static unsigned char LCDReadData( void )
     {
     // Variable to save the interrupts state at function entry.
@@ -266,7 +275,7 @@ static unsigned char LCDReadData( void )
     // Variable to temporarily hold the value read.
     unsigned char       s;
 
-#if         defined DETECT_FAILURE
+#if         defined DETECT_FAILURE && DETECT_FAILURE != 0
     // Variable to count the number of busy flag reads before an error is signaled.
     unsigned short      n   = NUMBER_OF_READS_TIMEOUT;
 
@@ -274,7 +283,7 @@ static unsigned char LCDReadData( void )
     if( displayfailed )
         // ... we are not using it until some routine clears the error flag.
         return 0x00;
-#endif  //  defined DETECT_FAILURE
+#endif  //  defined DETECT_FAILURE && DETECT_FAILURE != 0
 
     SaveInterruptsState( Aux );
 
@@ -303,12 +312,12 @@ static unsigned char LCDReadData( void )
         Delay500ns();
         // Read the status byte (only high nibble if in 4-bit mode).
         ReadDataPortValue( s );
-        // Low half of the trasfer cycle.
+        // Low half of the transfer cycle.
         SetEAsDisabled();
         // Wait for the minimum 'tLOW'.
         Delay500ns();
 
-#if         defined USE_FOUR_BIT_INTERFACE
+#if         defined USE_FOUR_BIT_INTERFACE && USE_FOUR_BIT_INTERFACE != 0
 
         // When using a 4-bit interface we need to do a dummy read
 
@@ -316,25 +325,25 @@ static unsigned char LCDReadData( void )
         SetEAsEnabled();
         // Wait for the minimum 'tHIGH'.
         Delay500ns();
-        // Low half of the trasfer cycle.
+        // Low half of the transfer cycle.
         SetEAsDisabled();
         // Wait for the minimum 'tLOW'.
         Delay500ns();
 
-#endif  //  defined USE_FOUR_BIT_INTERFACE
+#endif  //  defined USE_FOUR_BIT_INTERFACE && USE_FOUR_BIT_INTERFACE != 0
 
         // Set READ/!WRITE pin as write (0)
         SetRWAsWrite();
         }
     // Test the LCD's BUSY flag.
-#if         !defined DETECT_FAILURE
+#if         !defined DETECT_FAILURE || DETECT_FAILURE == 0
     while( s & 0x80 );
-#else   //  !defined DETECT_FAILURE
+#else   //  !defined DETECT_FAILURE || DETECT_FAILURE == 0
     while(( s & 0x80 ) && ( --n != 0u ));
 
     if( n == 0u )
         displayfailed   = 1;
-#endif  //  !defined DETECT_FAILURE
+#endif  //  !defined DETECT_FAILURE || DETECT_FAILURE == 0
 
 
     //--------------------------------------------------------------------------
@@ -356,7 +365,7 @@ static unsigned char LCDReadData( void )
     // Wait for the minimum 'tLOW'.
     Delay500ns();
 
-#if         defined USE_FOUR_BIT_INTERFACE
+#if         defined USE_FOUR_BIT_INTERFACE && USE_FOUR_BIT_INTERFACE != 0
 
     // Effectivate the data transfer.
     SetEAsEnabled();
@@ -369,7 +378,7 @@ static unsigned char LCDReadData( void )
     // Wait for the minimum 'tLOW'.
     Delay500ns();
 
-#endif  //  defined USE_FOUR_BIT_INTERFACE
+#endif  //  defined USE_FOUR_BIT_INTERFACE && USE_FOUR_BIT_INTERFACE != 0
 
     // Set READ/!WRITE pin as write (0)
     SetRWAsWrite();
@@ -380,7 +389,7 @@ static unsigned char LCDReadData( void )
     return s;
     }
 
-#endif  //  defined USE_READ_PIN
+#endif  //  defined USE_READ_PIN && USE_READ_PIN != 0
 
 //==============================================================================
 //==============================================================================
@@ -405,10 +414,10 @@ static unsigned char    cursorx         = 0,    cursory = 0;
 // Number of columns and lines of the screen.
 static unsigned char    maxx            = INITIAL_MAXX, maxy    = INITIAL_MAXY;
 
-#if         defined USE_DELAYED_SCROLL
+#if         defined USE_DELAYED_SCROLL && USE_DELAYED_SCROLL != 0
 // Flag to enable the delayed scroll mode.
-static unsigned char    delayedscroll   = 0;
-#endif  //  defined USE_DELAYED_SCROLL
+static unsigned char    delayedscroll   = 1;
+#endif  //  defined USE_DELAYED_SCROLL && USE_DELAYED_SCROLL != 0
 
 //==============================================================================
 unsigned char getmaxx( void )
@@ -431,28 +440,38 @@ unsigned char getcursory( void )
     return cursory + 1;
     }
 //==============================================================================
+signed char LCDResizeScreen( unsigned char width, unsigned char height )
+	{
+	if( width < 1 || width > MAXIMUM_MAXX || height < 1 || height > MAXIMUM_MAXY )
+		return -1;
 
-#if         defined USE_DELAYED_SCROLL
+	maxx	= width;
+	maxy	= height;
 
-void setscrollmode( unsigned char c )
+	clrscr();
+
+	return 1;
+	}
+//==============================================================================
+#if         defined USE_DELAYED_SCROLL && USE_DELAYED_SCROLL != 0
+
+void setscrollmode( unsigned char Mode )
     {
-    delayedscroll = c;
+    delayedscroll = Mode != 0;
     }
 
-#endif  //  defined USE_DELAYED_SCROLL
+#endif  //  defined USE_DELAYED_SCROLL && USE_DELAYED_SCROLL != 0
 
 //==============================================================================
 
-#if         !defined USE_READ_PIN
+#if         ( !defined USE_READ_PIN || USE_READ_PIN == 0 ) || ( defined OPTIMIZE_ACCESS && OPTIMIZE_ACCESS != 0 )
 
-static unsigned char screenbuffer[MAXIMUM_MAXY][MAXIMUM_MAXX];
+static unsigned char screenbuffer[MAXIMUM_MAXY*MAXIMUM_MAXX];
 static void scroll( void )
     {
     unsigned char x, y, c, *p, *q;
 
-    // Locate the cursor at the top left corner of the LCD.
-    LCDWriteCmd( 0x80 );
-    for( y = maxy - 1, p = screenbuffer, q = screenbuffer + maxx; y; y-- )
+    for( y = 0, p = screenbuffer, q = screenbuffer + maxx; y < maxy - 1; y++ )
         {
         // Locate the cursor at the begining of the current text line
         LCDWriteCmd( 0x80 | (( y << 6 ) & 0x40 ) + ( y & 0x02 ? maxx : 0 ));
@@ -477,7 +496,7 @@ static void scroll( void )
     LCDWriteCmd( 0x80 | (( cursory << 6 ) & 0x40 ) | ( cursorx & 0x3f ) + ( cursory & 0x02 ? maxx : 0 ));
     }
 
-#else   //  !defined USE_READ_PIN
+#else   //  ( !defined USE_READ_PIN || USE_READ_PIN == 0 ) || ( defined OPTIMIZE_ACCESS && OPTIMIZE_ACCESS != 0 )
 
 static unsigned char screenbuffer[MAXIMUM_MAXX];
 static void scroll( void )
@@ -512,7 +531,7 @@ static void scroll( void )
     LCDWriteCmd( 0x80 | (( cursory << 6 ) & 0x40 ) | ( cursorx & 0x3f ) + ( cursory & 0x02 ? maxx : 0 ));
     }
 
-#endif  //  !defined USE_READ_PIN
+#endif  //   ( !defined USE_READ_PIN || USE_READ_PIN == 0 ) || ( defined OPTIMIZE_ACCESS && OPTIMIZE_ACCESS != 0 )
 
 //==============================================================================
 void clrscr( void )
@@ -521,6 +540,10 @@ void clrscr( void )
 //
 //  SaveInterruptsState( Aux );
 //  DisableInterrupts();
+
+#if         ( !defined USE_READ_PIN || USE_READ_PIN == 0 ) || ( defined OPTIMIZE_ACCESS && OPTIMIZE_ACCESS != 0 )
+	memset( screenbuffer, ' ', sizeof screenbuffer );
+#endif	//	( !defined USE_READ_PIN || USE_READ_PIN == 0 ) || ( defined OPTIMIZE_ACCESS && OPTIMIZE_ACCESS != 0 )
 
     // Locate the cursor at the top-left corner of the screen
     cursorx = 0;
@@ -531,28 +554,28 @@ void clrscr( void )
 //  RestoreInterruptsState( Aux );
     }
 //==============================================================================
-void gotoxy( unsigned char x, unsigned char y )
+void gotoxy( signed char x, signed char y )
     {
 //  interruptstate_t    Aux;
 //
 //  SaveInterruptsState( Aux );
 //  DisableInterrupts();
 
-    // If the coordinates are valid...
-    if( x <= maxx && y <= maxy )
-        {
-        // If the column is different than zero...
-        if( x != 0u )
-            // ... change the current column to it.
-            cursorx = x - 1;
-        // If the line is different than zero...
-        if( y != 0u )
-            // ... change the current line to it.
-            cursory = y - 1;
+	if( x < -maxx || x > maxx || y < -maxy || y > maxy )
+		return;
 
-        // We need to positon the hardware cursor to the right place.
-        LCDWriteCmd( CMD_SET_DDRAM_ADDRESS | (( cursory << 6 ) & 0x40 ) | ( cursorx & 0x3f ) + ( cursory & 0x02 ? maxx : 0 ));
-        }
+	if( x == 0 )
+		x	= cursorx + 1;
+	else if( x < 0 )
+		x	= maxx + x + 1;
+
+	if( y == 0 )
+		y	= cursory + 1;
+	else if( y < 0 )
+		y	= maxy + x + 1;
+
+	// We need to positon the hardware cursor to the right place.
+	LCDWriteCmd( CMD_SET_DDRAM_ADDRESS | (( cursory << 6 ) & 0x40 ) | ( cursorx & 0x3f ) + ( cursory & 0x02 ? maxx : 0 ));
 
 //  RestoreInterruptsState( Aux );
     }
@@ -561,14 +584,27 @@ void gotoxy( unsigned char x, unsigned char y )
 // The name must be chosen to allow the library routines (printf, etc.) to link
 // to it.
 
-void LCD_PUTC( unsigned char c )
+// NEW: The redefinable characters 0x01 to 0x06 may be printed directly, but
+// characters 0x00 and 0x07 conflict with special control codes. They may be
+// printed by using codes 0x0e and 0x0f, respectively.
+// This is the best possible solution, because we don't lose neither displayable
+// nor control characters (characters 8 to 15 are just a shadow of characters 0
+// to 7).
+
+// Character  0         = '\0' (end of string)
+// Characters 1 to 6    = special redefinable characters 1 to 6.
+// Characters 7 to 13   = standard control characters.
+// Character  14        = printed as redefinable character zero.
+// Character  15        = printed as redefinable character 7.
+
+char LCD_PUTC( char c )
     {
 //  interruptstate_t    Aux;
 //
 //  SaveInterruptsState( Aux );
 //  DisableInterrupts();
 
-#if         defined USE_DELAYED_SCROLL
+#if         defined USE_DELAYED_SCROLL && USE_DELAYED_SCROLL != 0
     // There is a pending scroll and the current character is not '\a', '\b' or '\f', ...
     if( cursorx >= maxx && c != (char)'\a' && c != (char)'\b' && c != (char)'\f' )
         {
@@ -585,7 +621,7 @@ void LCD_PUTC( unsigned char c )
             scroll();
             }
         }
-#endif  //  defined USE_DELAYED_SCROLL
+#endif  //  defined USE_DELAYED_SCROLL && USE_DELAYED_SCROLL != 0
 
     switch( c )
         {
@@ -596,7 +632,7 @@ void LCD_PUTC( unsigned char c )
         case '\a':
             Beep();
 //          RestoreInterruptsState( Aux );
-            return /*0*/;
+            return c;
 
         //----------------------------------------------------------------------
         // '\b' = BACKSPACE
@@ -617,7 +653,7 @@ void LCD_PUTC( unsigned char c )
             LCDWriteCmd( 0x80 | (( cursory << 6 ) & 0x40 ) | ( cursorx & 0x0f ) + ( cursory & 0x02 ? maxx : 0 ));
             // ... finished.
 //          RestoreInterruptsState( Aux );
-            return /*0*/;
+            return c;
 
         //----------------------------------------------------------------------
         // '\f' = FORMFEED
@@ -626,7 +662,7 @@ void LCD_PUTC( unsigned char c )
             // Clear the screen.
             clrscr();
 //          RestoreInterruptsState( Aux );
-            return /*0*/;
+            return c;
         //----------------------------------------------------------------------
         // '\n' = NEWLINE
 
@@ -654,10 +690,10 @@ void LCD_PUTC( unsigned char c )
             LCDWriteCmd( 0x80 | (( cursory << 6 ) & 0x40 ) | ( cursorx & 0x0f ) + ( cursory & 0x02 ? maxx : 0 ));
             // Fim
 //          RestoreInterruptsState( Aux );
-            return /*0*/;
+            return c;
 
         //----------------------------------------------------------------------
-        // Aqui tratamos do caractere tabula��o ('\t' = TAB)
+        // Here we deal with character tabulation ('\t' = TAB)
 
         case '\t':
             {
@@ -675,19 +711,25 @@ void LCD_PUTC( unsigned char c )
             cursorx += Temp;
             // Print as many spaces as needed to reach the final position
             for( ; Temp; Temp-- )
+				{
+#if         ( !defined USE_READ_PIN || USE_READ_PIN == 0 ) || ( defined OPTIMIZE_ACCESS && OPTIMIZE_ACCESS != 0 )
+				// Store the character in the buffer. 
+				screenbuffer[cursory*maxx+cursorx]	= c;
+#endif	//	( !defined USE_READ_PIN || USE_READ_PIN == 0 ) || ( defined OPTIMIZE_ACCESS && OPTIMIZE_ACCESS != 0 )
                 LCDWriteData( ' ' );
+				}
 
-#if         defined USE_DELAYED_SCROLL
+#if         defined USE_DELAYED_SCROLL && USE_DELAYED_SCROLL != 0
 
             // The cursor ended beyond the last column but it is not on the last line, ...
             if( cursorx >= maxx && ( cursory + 1 < maxy || !delayedscroll ))
 
-#else   //  defined USE_DELAYED_SCROLL
+#else   //  defined USE_DELAYED_SCROLL && USE_DELAYED_SCROLL != 0
 
             // The cursor ended beyond the last column, ...
             if( cursorx >= maxx )
 
-#endif  //  defined USE_DELAYED_SCROLL
+#endif  //  defined USE_DELAYED_SCROLL && USE_DELAYED_SCROLL != 0
                 {
                 // ... position the cursor to the beginning of the next line.
                 cursorx = 0;
@@ -698,28 +740,51 @@ void LCD_PUTC( unsigned char c )
 
             // The cursor is yet on the same line, we may return right now.
 //          RestoreInterruptsState( Aux );
-            return /*0*/;
+            return c;
             }
-        //----------------------------------------------------------------------
+
+        // ---------------------------------------------------------------------- 
+        // The character 14 (0x0e) will be translated to the redefinable
+        // character 0 (zero).
+
+        case 14:
+            // Here we subtract 6, in the next case we subtract 8, resulting in zero.
+            c   -= 6;
+            // Fall-through.
+
+        // ---------------------------------------------------------------------- 
+        // The character 15 (0x0f) will be translated to the redefinable
+        // character 7.
+
+        case 15:
+            c   -= 8;
+            // Fall-through.
+
+        // ---------------------------------------------------------------------- 
         // Here we cope with the printable characters.
 
         default:
+#if         ( !defined USE_READ_PIN || USE_READ_PIN == 0 ) || ( defined OPTIMIZE_ACCESS && OPTIMIZE_ACCESS != 0 )
+			// Store the character in the buffer. 
+			screenbuffer[cursory*maxx+cursorx]	= c;
+#endif	//	( !defined USE_READ_PIN || USE_READ_PIN == 0 ) || ( defined OPTIMIZE_ACCESS && OPTIMIZE_ACCESS != 0 )
+
             // Print the character.
             LCDWriteData( c );
             // Increment the column.
             cursorx++;
 
-#if         defined USE_DELAYED_SCROLL
+#if         defined USE_DELAYED_SCROLL && USE_DELAYED_SCROLL != 0
 
             // The cursor ended beyond the last column but it is not on the last line, ...
             if( cursorx >= maxx && ( cursory + 1 < maxy || !delayedscroll ))
 
-#else   //  defined USE_DELAYED_SCROLL
+#else   //  defined USE_DELAYED_SCROLL && USE_DELAYED_SCROLL != 0
 
             // The cursor ended beyond the last column, ...
             if( cursorx >= maxx )
 
-#endif  //  defined USE_DELAYED_SCROLL
+#endif  //  defined USE_DELAYED_SCROLL && USE_DELAYED_SCROLL != 0
                 {
                 // ... position the cursor to the beginning of the next line.
                 cursorx = 0;
@@ -729,7 +794,7 @@ void LCD_PUTC( unsigned char c )
                 }
             // The cursor is yet on the same line, we may return right now.
 //          RestoreInterruptsState( Aux );
-            return /*0*/;
+            return c;
         }
     //--------------------------------------------------------------------------
     // The cursor is beyond the last line, ...
@@ -741,13 +806,13 @@ void LCD_PUTC( unsigned char c )
         scroll();
         // We may return now, the 'scroll' already positioned the cursor on the right place.
 //      RestoreInterruptsState( Aux );
-        return /*0*/;
+        return c;
         }
     // We must position the LCD cursor on the right place.
     LCDWriteCmd( 0x80 | (( cursory << 6 ) & 0x40 ) | ( cursorx & 0x0f ) + ( cursory & 0x02 ? maxx : 0 ));
     //--------------------------------------------------------------------------
 //  RestoreInterruptsState( Aux );
-    return /*0*/;
+    return c;
     }
 //==============================================================================
 void LCDControlCursor( unsigned char Mode )
@@ -779,7 +844,7 @@ void LCDInit( void )
     // The LCD's READ/!WRITE pin is an output.
     SetRWAsOutput();
 
-    // The initial value of the LCD's DATA/!INSTRUCTION pin is 0 (data).
+    // The initial value of the LCD's DATA/!INSTRUCTION pin is 0 (instruction).
     SetDIAsInstruction();
     // The LCD's DATA/!INSTRUCTION pin is an output.
     SetDIAsOutput();
@@ -794,8 +859,8 @@ void LCDInit( void )
 
     Delay15ms();
 
-    // Value to set the LCD interface to 8 bits, irrespective of the real board
-    // interface length.
+    // Value to set the LCD interface to 8 bits wide, irrespective of the real board
+    // interface width.
     SetDataPortValue( 0x30 );
 
     SetDataPortAsOutputs();
@@ -833,27 +898,35 @@ void LCDInit( void )
     // Low half of the trasfer cycle.
     SetEAsDisabled();
 
-#if         !defined USE_READ_PIN
+    // Set the correct interface bus width
+#if         defined USE_FOUR_BIT_INTERFACE && USE_FOUR_BIT_INTERFACE != 0
+
     // Wait for the execution time.
     Delay37us();
-#endif  //  !defined USE_READ_PIN
+    // "Function set (Set interface to be 4 bits wide.) Interface is currently 8 bits wide."
+    SetDataPortValue( 0x28 );
+    // Issue the command.
+    SetEAsEnabled();
+    // Wait for the minimum 'tHIGH'.
+    Delay500ns();
+    // Low half of the trasfer cycle.
+    SetEAsDisabled();
+    // Wait for the execution time.
+    Delay37us();
+#else   //  defined USE_FOUR_BIT_INTERFACE && USE_FOUR_BIT_INTERFACE != 0
 
-    // Set the correct interface length
-#if         defined USE_FOUR_BIT_INTERFACE
-
-    // "Function set (Set interface to be 4 bits long.) Interface is 8 bits in length."
-    LCDWriteCmd( 0x28 );
-
-#else   //  defined USE_FOUR_BIT_INTERFACE
-
-    // "Function set (Interface is 8 bits long.)"
+#if         !defined USE_READ_PIN || USE_READ_PIN == 0
+    // Wait for the execution time.
+    Delay37us();
+#endif  //  !defined USE_READ_PIN || USE_READ_PIN == 0
+    // "Function set (Interface is 8 bits wide.)"
     LCDWriteCmd( 0x38 );
 
-#endif  //  defined USE_FOUR_BIT_INTERFACE
+#endif  //  defined USE_FOUR_BIT_INTERFACE && USE_FOUR_BIT_INTERFACE != 0
 
     // Turn display on
     LCDWriteCmd( 0x0c );
     // Clear display
-    LCDWriteCmd( CMD_CLEAR_DISPLAY );
+    clrscr();
     }
 //==============================================================================
